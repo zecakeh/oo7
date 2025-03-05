@@ -121,10 +121,19 @@ impl Keyring {
         let key = keyring.derive_key(&secret)?;
         let mut errors = 0u8;
         for encrypted_item in &mut keyring.items {
-            if let Err(_err) = encrypted_item.clone().decrypt(&key) {
-                #[cfg(feature = "tracing")]
-                tracing::error!("Failed to decrypt item, incorrect secret?: {_err}");
-                errors += 1;
+            match encrypted_item.clone().decrypt(&key) {
+                Ok(_item) => {
+                    #[cfg(feature = "tracing")]
+                    tracing::warn!(item = ?_item, "successfully decrypted item");
+                }
+                Err(_err) => {
+                    #[cfg(feature = "tracing")]
+                    tracing::error!(
+                        ?encrypted_item,
+                        "Failed to decrypt item, incorrect secret?:{_err}"
+                    );
+                    errors += 1;
+                }
             }
         }
         if errors > 0 {
